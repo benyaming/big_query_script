@@ -2,18 +2,14 @@ import os
 import sys
 from csv import writer
 from datetime import datetime
+from traceback import format_exc
 
 from google.cloud import bigquery
 
 import config
 
 
-FILE_HANDLERS = {
-    'data': open('{}/{}.csv'.format(config.FILE_FILDER, config.FILE_NAME), 'ab'),
-    'error': open('{}/{}.log'.format(config.ERROR_FILE_FOLDER, config.ERROR_FILE_NAME),
-                  'ab')
-}
-FILE_HANDLERS['dw'] = writer(FILE_HANDLERS['data'], delimiter=',', quotechar='"')
+FILE_HANDLERS = {}
 
 
 def on_start():
@@ -21,11 +17,18 @@ def on_start():
     Make some preparations before downloading process
     """
     # register credentials
-    # os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = config.KEY_PATH
+    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = config.KEY_PATH
 
     # add utf-8 support (python 2.7 crutch)
     reload(sys)
     sys.setdefaultencoding('utf8')
+
+    # initialise file descryptors
+    FILE_HANDLERS['data'] = open('{}/{}.csv'.format(
+        config.FILE_FILDER, config.FILE_NAME), 'ab')
+    FILE_HANDLERS['error'] = open('{}/{}.log'.format(
+        config.ERROR_FILE_FOLDER, config.ERROR_FILE_NAME), 'ab')
+    FILE_HANDLERS['dw'] = writer(FILE_HANDLERS['data'], delimiter=',', quotechar='"')
 
 
 def get_now():
@@ -74,14 +77,13 @@ def rollover(f, file_count):
     return open(file_path, 'ab')
 
 
-def write_error(exception, description):
+def write_error(exception):
     """
     Writes error message to error file.
     :param exception: exception data
-    :param description: exception description
     """
-    msg = '{}, {}\n{}\n========================\n'.format(
-        get_now(), description, exception)
+    msg = '{}\n{}======================================\n'.format(
+        get_now(), exception)
     current_file_size = os.path.getsize(FILE_HANDLERS['error'].name)
     file_is_full = check_file_size(msg, current_file_size, config.ERROR_FILE_SIZE * 1024)
     if file_is_full:
@@ -106,28 +108,12 @@ def load_data():
     and writes it to csv file
     """
 
-    # Check connection
-    try:
-        client = bigquery.Client()
-    except Exception as e:
-        write_error(e, 'Connection error')
-        return
-    else:
-        query_job = client.query(query=config.SQL_QUERY)
-
-    # Check if query is executable
-    try:
-        result = query_job.result()
-    except Exception as e:
-        write_error(e, 'Query executing error')
-        return
+    client = bigquery.Client()
+    query_job = client.query(query=config.SQL_QUERY)
 
     # Working with data row-per-row
-    for row in result:
-        try:
-            write_data(row.values())
-        except Exception as e:
-            write_error(e, 'Writing to file error')
+    for row in query_job:
+        write_data(row.values())
 
 
 def on_finish():
@@ -136,6 +122,11 @@ def on_finish():
 
 
 if __name__ == '__main__':
-    on_start()
-    load_data()
-    on_finish()
+    try:
+        on_start()
+        load_data()
+    except Exception as e:
+        write_error(format_exc())
+        raise e
+    finally:
+        on_finish()
