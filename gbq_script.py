@@ -10,6 +10,7 @@ import config
 
 
 FILE_HANDLERS = {}
+HEADERS = {}
 
 
 def on_start():
@@ -30,9 +31,20 @@ def on_start():
         config.ERROR_FILE_FOLDER, config.ERROR_FILE_NAME), 'ab')
     FILE_HANDLERS['dw'] = writer(FILE_HANDLERS['data'], delimiter=',', quotechar='"')
 
+    HEADERS['writed'] = True if file_exists(FILE_HANDLERS['data']) else False
+
 
 def get_now():
     return datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+
+
+def file_exists(f):
+    """
+    Return True if file size more then 0
+    :param f: File descriptor
+    """
+    f.seek(0, 2)
+    return f.tell() > 0
 
 
 def check_file_size(data, current_file_size, max_file_size):
@@ -92,13 +104,20 @@ def write_error(exception):
     FILE_HANDLERS['error'].write(msg)
 
 
-def write_data(data):
+def write_data(headers, data):
     current_file_size = os.path.getsize(FILE_HANDLERS['data'].name)
     file_is_full = check_file_size(data, current_file_size, config.FILE_SIZE * 1024)
     if file_is_full:
         fc = config.FILE_COUNT
         FILE_HANDLERS['data'] = rollover(FILE_HANDLERS['data'], fc)
         FILE_HANDLERS['dw'] = writer(FILE_HANDLERS['data'], delimiter=',', quotechar='"')
+        HEADERS['writed'] = False
+
+    # Write csv headers if they haven't been written
+    if not HEADERS['writed']:
+        FILE_HANDLERS['dw'].writerow(headers)
+        HEADERS['writed'] = True
+
     FILE_HANDLERS['dw'].writerow(data)
 
 
@@ -113,7 +132,9 @@ def load_data():
 
     # Working with data row-per-row
     for row in query_job:
-        write_data(row.values())
+        headers = list(row.keys())
+        data = row.values()
+        write_data(headers=headers, data=data)
 
 
 def on_finish():
@@ -127,6 +148,6 @@ if __name__ == '__main__':
         load_data()
     except Exception as e:
         write_error(format_exc())
-        raise e
+        raise
     finally:
         on_finish()
