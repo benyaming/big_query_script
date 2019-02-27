@@ -119,6 +119,7 @@ def write_data(headers, data):
         HEADERS['writed'] = True
 
     FILE_HANDLERS['dw'].writerow(data)
+    FILE_HANDLERS['data'].flush()
 
 
 def load_data():
@@ -128,11 +129,11 @@ def load_data():
     """
 
     client = bigquery.Client()
-    query_job = client.query(query=config.SQL_QUERY)
+    result = client.query(query=config.SQL_QUERY).result()
+    headers = [i.name for i in result.schema]
 
     # Working with data row-per-row
-    for row in query_job:
-        headers = list(row.keys())
+    for row in result:
         data = row.values()
         write_data(headers=headers, data=data)
 
