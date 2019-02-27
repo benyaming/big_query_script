@@ -119,6 +119,7 @@ def write_data(headers, data):
         HEADERS['writed'] = True
 
     FILE_HANDLERS['dw'].writerow(data)
+    ########
     FILE_HANDLERS['data'].flush()
 
 
