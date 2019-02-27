@@ -26,7 +26,7 @@ def on_start():
 
     # initialise file descryptors
     FILE_HANDLERS['data'] = open('{}/{}.csv'.format(
-        config.FILE_FILDER, config.FILE_NAME), 'ab')
+        config.FILE_FOLDER, config.FILE_NAME), 'ab')
     FILE_HANDLERS['error'] = open('{}/{}.log'.format(
         config.ERROR_FILE_FOLDER, config.ERROR_FILE_NAME), 'ab')
     FILE_HANDLERS['dw'] = writer(FILE_HANDLERS['data'], delimiter=',', quotechar='"')
