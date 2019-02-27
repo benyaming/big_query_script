@@ -13,7 +13,7 @@ KEY_PATH = 'place_path_here'
 SQL_QUERY = 'place_sql_here'
 
 # Data file options
-FILE_FILDER = ''  # Absolute path to data files folder. Ex: '/home/data/'
+FILE_FOLDER = ''  # Absolute path to data files folder. Ex: '/home/data/'
 FILE_NAME = ''  # Data file name without extansion. Ex: 'data'
 FILE_SIZE = 0  # Data file size in KBytes
 FILE_COUNT = 0  # Number of data files to store
